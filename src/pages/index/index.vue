@@ -20,6 +20,12 @@ console.log('index/index 首页打印了')
 onLoad(() => {
   console.log('测试 uni API 自动引入: onLoad')
 })
+
+function handleGoToLogin() {
+  uni.navigateTo({
+    url: '/pages-sub/auth/login/index',
+  })
+}
 </script>
 
 <template>
@@ -48,6 +54,14 @@ onLoad(() => {
       <text class="text-green-500">
         https://unibest.tech
       </text>
+    </view>
+    <view class="mt-8 flex justify-center">
+      <button
+        class="rounded-lg bg-blue-500 px-8 py-3 text-white font-bold"
+        @tap="handleGoToLogin"
+      >
+        跳转到登录页面
+      </button>
     </view>
   </view>
 </template>

@@ -3,11 +3,11 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
   getUserInfo,
-} from '@/api/login'
+} from '@/api/auth'
 
-// 初始化状态
+// 初始化状态 - 与后端 UserInfoBO 对应
 const userInfoState: IUserInfoRes = {
-  userId: -1,
+  id: '',
   username: '',
   nickname: '',
   avatar: '/static/images/default-avatar.png',
