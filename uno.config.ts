@@ -77,6 +77,13 @@ export default defineConfig({
     'i-carbon-user',
     'i-carbon-view?mask',
     'i-carbon-view-off?mask',
+    // my页面后端动态导航图标（需预编译到小程序样式中）
+    'i-mingcute:user-1-line',
+    'i-quill:star',
+    'i-quill:cog-alt',
+    'i-quill:warning-alt',
+    'i-quill:add',
+    'i-quill:mail-list',
   ],
   rules: [
     [

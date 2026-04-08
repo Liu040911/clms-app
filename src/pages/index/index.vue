@@ -1,4 +1,8 @@
 <script lang="ts" setup>
+import type { HotLectureListItem } from '@/api/types/lecture'
+import { getRecentHotLectureList } from '@/api/lecture'
+import { usePageScrollableHeight } from '@/hooks/usePageScrollableHeight'
+
 defineOptions({
   name: 'Home',
 })
@@ -12,13 +16,84 @@ definePage({
   },
 })
 
-const description = ref(
-  'unibest 是一个集成了多种工具和技术的 uniapp 开发模板，由 uniapp + Vue3 + Ts + Vite5 + UnoCss + VSCode 构建，模板具有代码提示、自动格式化、统一配置、代码片段等功能，并内置了许多常用的基本组件和基本功能，让你编写 uniapp 拥有 best 体验。',
-)
-console.log('index/index 首页打印了')
+const categoryList = [
+  { icon: '🎤', name: '名师讲座' },
+  { icon: '💡', name: '学术沙龙' },
+  { icon: '🏫', name: '学院专场' },
+  { icon: '🧪', name: '科研分享' },
+  { icon: '💼', name: '就业指导' },
+  { icon: '📝', name: '报名签到' },
+  { icon: '📚', name: '考研规划' },
+  { icon: '🧭', name: '生涯导航' },
+  { icon: '🏅', name: '竞赛经验' },
+  { icon: '✨', name: '更多讲座' },
+]
+
+const hotTabs = ['近期热门', '学术提升', '就业指导', '综合素养']
+const activeTab = ref(hotTabs[0])
+const searchRightOffset = ref('0rpx')
+const searchBarHeight = ref('72rpx')
+const searchTopOffset = ref('20rpx')
+const headerPaddingTop = ref('44rpx')
+const { pageScrollableHeight, updatePageScrollableHeight } = usePageScrollableHeight({
+  customTabbarHeightPx: 50,
+})
+
+const bannerList = [
+  {
+    title: '校园讲座上新，一键预约入场',
+    subtitle: '讲座时间、地点与名额一目了然',
+    tip: '讲座速递',
+    bgColor: '#d8efb5',
+  },
+  {
+    title: '职业发展专场持续开放报名',
+    subtitle: '实习、求职、面试经验集中分享',
+    tip: '就业专题',
+    bgColor: '#cfe8ff',
+  },
+  {
+    title: '科研与竞赛分享会本周开启',
+    subtitle: '高频讲座支持快速收藏与提醒',
+    tip: '本周精选',
+    bgColor: '#e7dcff',
+  },
+]
+
+const recommendList = ref<HotLectureListItem[]>([])
+const recommendLoading = ref(false)
 
 onLoad(() => {
-  console.log('测试 uni API 自动引入: onLoad')
+  // #ifdef MP-WEIXIN
+  try {
+    const menuRect = wx.getMenuButtonBoundingClientRect()
+    const systemInfo = uni.getSystemInfoSync()
+    const pxToRpx = 750 / systemInfo.windowWidth
+    const menuLeftRpx = menuRect.left * pxToRpx
+    const contentRightRpx = 750 - 24
+    const capsuleGapRpx = Math.ceil(5 * pxToRpx)
+    const rightGapRpx = Math.max(0, Math.ceil(contentRightRpx - menuLeftRpx + capsuleGapRpx))
+    const menuHeightRpx = Math.ceil(menuRect.height * pxToRpx)
+    const statusBarHeightPx = systemInfo.statusBarHeight || 0
+    const topOffsetRpx = Math.max(0, Math.ceil((menuRect.top - statusBarHeightPx) * pxToRpx))
+    const statusBarHeightRpx = Math.ceil(statusBarHeightPx * pxToRpx)
+    searchRightOffset.value = `${rightGapRpx}rpx`
+    searchBarHeight.value = `${menuHeightRpx}rpx`
+    searchTopOffset.value = `${topOffsetRpx}rpx`
+    headerPaddingTop.value = `${statusBarHeightRpx}rpx`
+  }
+  catch {
+    searchRightOffset.value = '180rpx'
+    searchBarHeight.value = '72rpx'
+    searchTopOffset.value = '20rpx'
+    headerPaddingTop.value = '44rpx'
+  }
+  // #endif
+
+  updatePageScrollableHeight()
+  void fetchRecentHotLectureList()
+
+  console.log('首页加载完成')
 })
 
 function handleGoToLogin() {
@@ -26,42 +101,150 @@ function handleGoToLogin() {
     url: '/pages-sub/auth/login/index',
   })
 }
+
+function handleSearch() {
+  uni.showToast({ title: '搜索功能开发中', icon: 'none' })
+}
+
+function handleCategoryClick(name: string) {
+  uni.showToast({ title: `${name}开发中`, icon: 'none' })
+}
+
+function handleTabClick(tab: string) {
+  activeTab.value = tab
+}
+
+async function fetchRecentHotLectureList() {
+  recommendLoading.value = true
+  try {
+    const list = await getRecentHotLectureList()
+    recommendList.value = list
+  }
+  catch {
+    uni.showToast({
+      title: '热门讲座加载失败',
+      icon: 'none',
+    })
+  }
+  finally {
+    recommendLoading.value = false
+  }
+}
+
+function handleRecommendClick(id: string) {
+  uni.navigateTo({
+    url: `/pages-sub/lecture/detail/index?id=${id}`,
+  })
+}
 </script>
 
 <template>
-  <view class="bg-white px-4 pt-safe">
-    <view class="mt-10">
-      <image src="/static/logo.svg" alt="" class="mx-auto block h-28 w-28" />
-    </view>
-    <view class="mt-4 text-center text-4xl text-[#d14328]">
-      unibest
-    </view>
-    <view class="mb-8 mt-2 text-center text-2xl">
-      最好用的 uniapp 开发模板
-    </view>
+  <view class="overflow-hidden bg-gray-100" :style="{ height: pageScrollableHeight }">
+    <scroll-view class="h-full" scroll-y>
+      <view class="bg-linear-to-br from-blue-500 to-purple-600 px-24rpx pb-24rpx" :style="{ paddingTop: headerPaddingTop }">
+        <view class="flex items-center" :style="{ marginTop: searchTopOffset }">
+          <view
+            class="flex flex-1 items-center rounded-9999rpx bg-white/90 px-24rpx"
+            :style="{ marginRight: searchRightOffset, height: searchBarHeight }"
+          >
+            <text class="mr-12rpx text-28rpx text-gray-400">
+              🔍
+            </text>
+            <text class="flex-1 text-26rpx text-gray-400" @tap="handleSearch">
+              搜索讲座名称/主讲人/学院
+            </text>
+          </view>
+        </view>
+      </view>
 
-    <view class="m-auto mb-2 max-w-100 text-justify indent text-4">
-      {{ description }}
-    </view>
-    <view class="mt-4 text-center">
-      作者：
-      <text class="text-green-500">
-        菲鸽
-      </text>
-    </view>
-    <view class="mt-4 text-center">
-      官网地址：
-      <text class="text-green-500">
-        https://unibest.tech
-      </text>
-    </view>
-    <view class="mt-8 flex justify-center">
-      <button
-        class="rounded-lg bg-blue-500 px-8 py-3 text-white font-bold"
-        @tap="handleGoToLogin"
-      >
-        跳转到登录页面
-      </button>
-    </view>
+      <view class="px-24rpx pb-24rpx">
+        <swiper
+          class="mt-20rpx h-160rpx overflow-hidden rounded-24rpx"
+          :autoplay="true"
+          :circular="true"
+          :interval="3000"
+          :duration="500"
+          :indicator-dots="true"
+          indicator-color="rgba(255,255,255,0.6)"
+          indicator-active-color="#3b82f6"
+        >
+          <swiper-item v-for="item in bannerList" :key="item.title">
+            <view class="h-full px-24rpx py-20rpx" :style="{ backgroundColor: item.bgColor }">
+              <view class="mb-10rpx text-22rpx text-green-700 font-bold">
+                {{ item.tip }}
+              </view>
+              <view class="text-36rpx text-gray-800 font-bold">
+                {{ item.title }}
+              </view>
+              <view class="mt-10rpx text-24rpx text-gray-500">
+                {{ item.subtitle }}
+              </view>
+            </view>
+          </swiper-item>
+        </swiper>
+
+        <view class="mt-20rpx rounded-24rpx bg-white p-24rpx shadow-sm">
+          <view class="mb-20rpx text-center text-24rpx text-gray-500">
+            校园讲座专题，一键预约快速报名
+          </view>
+
+          <view class="grid grid-cols-5 gap-y-24rpx">
+            <view
+              v-for="item in categoryList"
+              :key="item.name"
+              class="flex flex-col items-center"
+              @tap="handleCategoryClick(item.name)"
+            >
+              <view class="mb-8rpx h-72rpx w-72rpx flex items-center justify-center rounded-9999rpx bg-blue-50 text-34rpx">
+                {{ item.icon }}
+              </view>
+              <text class="text-20rpx text-gray-600">
+                {{ item.name }}
+              </text>
+            </view>
+          </view>
+        </view>
+
+        <view class="mt-20rpx rounded-24rpx bg-white p-24rpx shadow-sm">
+          <view class="mb-18rpx text-center text-34rpx text-gray-800 font-bold">
+            热门讲座推荐
+          </view>
+
+          <view class="mb-20rpx flex flex-wrap gap-12rpx">
+            <view
+              v-for="tab in hotTabs"
+              :key="tab"
+              class="rounded-9999rpx px-20rpx py-8rpx text-22rpx"
+              :class="activeTab === tab ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'"
+              @tap="handleTabClick(tab)"
+            >
+              {{ tab }}
+            </view>
+          </view>
+
+          <view v-if="recommendLoading" class="py-32rpx text-center text-24rpx text-gray-400">
+            讲座数据加载中...
+          </view>
+
+          <view v-else-if="recommendList.length === 0" class="py-32rpx text-center text-24rpx text-gray-400">
+            暂无近期热门讲座
+          </view>
+
+          <view v-else class="grid grid-cols-3 gap-14rpx">
+            <view
+              v-for="item in recommendList"
+              :key="item.id"
+              class="overflow-hidden rounded-16rpx bg-gray-50"
+              @tap="handleRecommendClick(item.id)"
+            >
+              <image :src="item.posterUrl" mode="aspectFill" class="h-128rpx w-full" />
+              <view class="px-10rpx py-10rpx text-center text-22rpx text-gray-700">
+                {{ item.title }}
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
   </view>
 </template>

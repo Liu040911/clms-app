@@ -41,12 +41,12 @@
 
         <!-- 微信登录按钮（仅微信小程序显示） -->
         <!-- #ifdef MP-WEIXIN -->
-        <GradientButton
+        <!-- <GradientButton
           custom-class="mb-40rpx"
           gradient-color="green"
           text="微信登录"
           @click="handleWechatLogin"
-        />
+        /> -->
         <!-- #endif -->
       </view>
 
@@ -128,6 +128,44 @@ const codeLoginForm = ref<ILoginForm>({
 const loading = ref(false)
 const codeSending = ref(false)
 const codeCountdown = ref(0)
+const redirectPath = ref('/pages/index/index')
+
+const TAB_PAGE_PATHS = new Set(['/pages/index/index', '/pages/my/my'])
+
+function getSafeRedirectPath(rawRedirect?: string) {
+  if (!rawRedirect) {
+    return '/pages/index/index'
+  }
+
+  let decoded = rawRedirect
+  try {
+    decoded = decodeURIComponent(rawRedirect)
+  }
+  catch {
+    decoded = rawRedirect
+  }
+
+  if (!decoded.startsWith('/')) {
+    return '/pages/index/index'
+  }
+
+  return decoded
+}
+
+function navigateAfterLogin() {
+  const targetPath = getSafeRedirectPath(redirectPath.value)
+
+  if (TAB_PAGE_PATHS.has(targetPath)) {
+    uni.switchTab({ url: targetPath })
+    return
+  }
+
+  uni.redirectTo({ url: targetPath })
+}
+
+onLoad((options) => {
+  redirectPath.value = getSafeRedirectPath(typeof options?.redirect === 'string' ? options.redirect : undefined)
+})
 
 // 密码登录
 function handleLogin() {
@@ -144,14 +182,14 @@ function handleLogin() {
     try {
       await tokenStore.login(loginForm.value)
 
-      // 获取重定向路径
-      const pages = getCurrentPages()
-      const currentPage = pages[pages.length - 1] as any
-      const redirect = currentPage.route ? `/pages/${currentPage.route}` : '/pages/index/index'
-
-      uni.reLaunch({
-        url: redirect,
+      uni.showToast({
+        title: '登录成功',
+        icon: 'success',
       })
+
+      setTimeout(() => {
+        navigateAfterLogin()
+      }, 500)
     }
     catch (error) {
       console.error('登录失败:', error)
@@ -178,14 +216,14 @@ function handleCodeLogin() {
       // 使用验证码登录，复用 tokenStore.login
       await tokenStore.login(codeLoginForm.value)
 
-      // 获取重定向路径
-      const pages = getCurrentPages()
-      const currentPage = pages[pages.length - 1] as any
-      const redirect = currentPage.route ? `/pages/${currentPage.route}` : '/pages/index/index'
-
-      uni.reLaunch({
-        url: redirect,
+      uni.showToast({
+        title: '登录成功',
+        icon: 'success',
       })
+
+      setTimeout(() => {
+        navigateAfterLogin()
+      }, 500)
     }
     catch (error) {
       console.error('验证码登录失败:', error)
@@ -246,23 +284,23 @@ function handleSendCode() {
 }
 
 // 微信登录
-function handleWechatLogin() {
-  return (async () => {
-    loading.value = true
-    try {
-      await tokenStore.wxLogin()
-      uni.reLaunch({
-        url: '/pages/index/index',
-      })
-    }
-    catch (error) {
-      console.error('微信登录失败:', error)
-    }
-    finally {
-      loading.value = false
-    }
-  })()
-}
+// function handleWechatLogin() {
+//   return (async () => {
+//     loading.value = true
+//     try {
+//       await tokenStore.wxLogin()
+//       uni.reLaunch({
+//         url: '/pages/index/index',
+//       })
+//     }
+//     catch (error) {
+//       console.error('微信登录失败:', error)
+//     }
+//     finally {
+//       loading.value = false
+//     }
+//   })()
+// }
 
 // 忘记密码
 function handleForgotPassword() {

@@ -13,6 +13,7 @@ import {
 } from '@/api/auth'
 import { isDoubleTokenRes, isSingleTokenRes } from '@/api/types/login'
 import { isDoubleTokenMode } from '@/utils'
+import { useAppStatus } from './app'
 import { useUserStore } from './user'
 
 // 初始化状态
@@ -191,7 +192,9 @@ export const useTokenStore = defineStore(
         tokenInfo.value = { ...tokenInfoState }
         uni.removeStorageSync('token')
         const userStore = useUserStore()
+        const appStatus = useAppStatus()
         userStore.clearUserInfo()
+        appStatus.clearConfig()
       }
     }
 

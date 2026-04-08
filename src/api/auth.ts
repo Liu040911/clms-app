@@ -99,7 +99,7 @@ export function getUserInfo() {
  * 退出登录
  */
 export function logout() {
-  return http.get<void>(`${BASE_URL}/auth/logout`)
+  return http.post<void>(`${BASE_URL}/auth/logout`)
 }
 
 /**

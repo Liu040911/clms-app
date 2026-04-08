@@ -18,6 +18,7 @@ export const useUserStore = defineStore(
   () => {
     // 定义用户信息
     const userInfo = ref<IUserInfoRes>({ ...userInfoState })
+    const userPermissions = ref<string[]>([])
     // 设置用户信息
     const setUserInfo = (val: IUserInfoRes) => {
       console.log('设置用户信息', val)
@@ -26,6 +27,11 @@ export const useUserStore = defineStore(
         val.avatar = userInfoState.avatar
       }
       userInfo.value = val
+      userPermissions.value = Array.isArray(val.permissions) ? val.permissions : []
+    }
+
+    const setUserPermissions = (permissions: string[]) => {
+      userPermissions.value = permissions
     }
     const setUserAvatar = (avatar: string) => {
       userInfo.value.avatar = avatar
@@ -35,6 +41,7 @@ export const useUserStore = defineStore(
     // 删除用户信息
     const clearUserInfo = () => {
       userInfo.value = { ...userInfoState }
+      userPermissions.value = []
       uni.removeStorageSync('user')
     }
 
@@ -49,9 +56,11 @@ export const useUserStore = defineStore(
 
     return {
       userInfo,
+      userPermissions,
       clearUserInfo,
       fetchUserInfo,
       setUserInfo,
+      setUserPermissions,
       setUserAvatar,
     }
   },
