@@ -130,6 +130,12 @@ importers:
       '@iconify-json/carbon':
         specifier: ^1.2.4
         version: 1.2.13
+      '@iconify-json/mingcute':
+        specifier: ^1.2.7
+        version: 1.2.7
+      '@iconify-json/quill':
+        specifier: ^1.2.4
+        version: 1.2.4
       '@iconify/utils':
         specifier: ^3.0.2
         version: 3.0.2
@@ -1395,6 +1401,12 @@ packages:
 
   '@iconify-json/carbon@1.2.13':
     resolution: {integrity: sha512-vXrFFKkfYaZSwf4WfnRQJQMnpEzxlPlupwZZlS1WvOAuNnWahsUudHycaMpoBzDqBfniH4KQ2b5qnw0VMKoJug==}
+
+  '@iconify-json/mingcute@1.2.7':
+    resolution: {integrity: sha512-bp4z6F53KAQp99aSL7qPCHL7HWUNGMNKIhfo/dx9pwVHiad/WusUbTOFXEZfpA44syJPzSOxa3O6Pwiq7qZz1g==}
+
+  '@iconify-json/quill@1.2.4':
+    resolution: {integrity: sha512-XQCbXo//YbbTZbWvpJj90PIvUMe1a4ijHPVORY1rkBVdHjkpj3heuMGam/lQ8NDy/p4ZanAwIoqGtOPeGmEfdA==}
 
   '@iconify/types@2.0.0':
     resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
@@ -8172,6 +8184,14 @@ snapshots:
   '@humanwhocodes/retry@0.4.3': {}
 
   '@iconify-json/carbon@1.2.13':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/mingcute@1.2.7':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/quill@1.2.4':
     dependencies:
       '@iconify/types': 2.0.0
 

@@ -51,8 +51,11 @@ const httpInterceptor = {
     // 3. 添加 token 请求头标识
     const tokenStore = useTokenStore()
     const token = tokenStore.validToken
+    const existingAuthHeader = (options.header as Record<string, any>)?.Authorization
+      || (options.header as Record<string, any>)?.authorization
 
-    if (token) {
+    // 已显式设置 Authorization（例如七牛 UpToken）时，不覆盖
+    if (token && !existingAuthHeader) {
       options.header.Authorization = `Bearer ${token}`
     }
     return options

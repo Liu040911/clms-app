@@ -1,6 +1,6 @@
 import type {
   ILoginForm,
-} from '@/api/login'
+} from '@/api/auth'
 import type { IAuthLoginRes } from '@/api/types/login'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue' // 修复：导入 computed
@@ -10,9 +10,10 @@ import {
   refreshToken as _refreshToken,
   wxLogin as _wxLogin,
   getWxCode,
-} from '@/api/login'
+} from '@/api/auth'
 import { isDoubleTokenRes, isSingleTokenRes } from '@/api/types/login'
 import { isDoubleTokenMode } from '@/utils'
+import { useAppStatus } from './app'
 import { useUserStore } from './user'
 
 // 初始化状态
@@ -46,8 +47,27 @@ export const useTokenStore = defineStore(
       }
       else if (isDoubleTokenRes(val)) {
         // 双token模式
-        const accessExpireTime = now + val.accessExpiresIn * 1000
-        const refreshExpireTime = now + val.refreshExpiresIn * 1000
+        let accessExpireTime: number
+        let refreshExpireTime: number
+
+        // 兼容两种格式：expires (Date/string) 或 accessExpiresIn (秒数)
+        if (val.expires) {
+          // 后端返回的 expires 格式
+          accessExpireTime = new Date(val.expires).getTime()
+          // refreshToken 默认7天有效期
+          refreshExpireTime = now + 7 * 24 * 60 * 60 * 1000
+        }
+        else if (val.accessExpiresIn) {
+          // 旧格式：秒数
+          accessExpireTime = now + val.accessExpiresIn * 1000
+          refreshExpireTime = now + (val.refreshExpiresIn || 7 * 24 * 60 * 60) * 1000
+        }
+        else {
+          // 默认2小时
+          accessExpireTime = now + 2 * 60 * 60 * 1000
+          refreshExpireTime = now + 7 * 24 * 60 * 60 * 1000
+        }
+
         uni.setStorageSync('accessTokenExpireTime', accessExpireTime)
         uni.setStorageSync('refreshTokenExpireTime', refreshExpireTime)
       }
@@ -115,7 +135,7 @@ export const useTokenStore = defineStore(
       catch (error) {
         console.error('登录失败:', error)
         uni.showToast({
-          title: '登录失败，请重试',
+          title: error.data?.msg || '登录失败，请重试',
           icon: 'error',
         })
         throw error
@@ -145,7 +165,7 @@ export const useTokenStore = defineStore(
       catch (error) {
         console.error('微信登录失败:', error)
         uni.showToast({
-          title: '微信登录失败，请重试',
+          title: error.data?.msg || '微信登录失败，请重试',
           icon: 'error',
         })
         throw error
@@ -172,7 +192,9 @@ export const useTokenStore = defineStore(
         tokenInfo.value = { ...tokenInfoState }
         uni.removeStorageSync('token')
         const userStore = useUserStore()
+        const appStatus = useAppStatus()
         userStore.clearUserInfo()
+        appStatus.clearConfig()
       }
     }
 

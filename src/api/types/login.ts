@@ -11,8 +11,9 @@ export interface ISingleTokenRes {
 export interface IDoubleTokenRes {
   accessToken: string
   refreshToken: string
-  accessExpiresIn: number // 访问令牌有效期(秒)
-  refreshExpiresIn: number // 刷新令牌有效期(秒)
+  accessExpiresIn?: number // 访问令牌有效期(秒) - 可选，兼容旧格式
+  refreshExpiresIn?: number // 刷新令牌有效期(秒) - 可选，兼容旧格式
+  expires?: string | Date // accessToken过期时间 - 后端返回格式
 }
 
 /**
@@ -21,14 +22,22 @@ export interface IDoubleTokenRes {
 export type IAuthLoginRes = ISingleTokenRes | IDoubleTokenRes
 
 /**
- * 用户信息
+ * 用户信息 - 与后端 UserInfoBO 对应
  */
 export interface IUserInfoRes {
-  userId: number
+  id: string
   username: string
   nickname: string
   avatar?: string
-  [key: string]: any // 允许其他扩展字段
+  phone?: string
+  email?: string
+  gender?: string
+  className?: string
+  collegeName?: string
+  roles?: string[]
+  permissions?: string[]
+  createTime?: string
+  updateTime?: string
 }
 
 // 认证存储数据结构

@@ -71,7 +71,20 @@ export default defineConfig({
     },
   ],
   // 动态图标需要在这里配置，或者写在vue页面中注释掉
-  safelist: ['i-carbon-code', 'i-carbon-home', 'i-carbon-user'],
+  safelist: [
+    'i-carbon-code',
+    'i-carbon-home',
+    'i-carbon-user',
+    'i-carbon-view?mask',
+    'i-carbon-view-off?mask',
+    // my页面后端动态导航图标（需预编译到小程序样式中）
+    'i-mingcute:user-1-line',
+    'i-quill:star',
+    'i-quill:cog-alt',
+    'i-quill:warning-alt',
+    'i-quill:add',
+    'i-quill:mail-list',
+  ],
   rules: [
     [
       'p-safe',
