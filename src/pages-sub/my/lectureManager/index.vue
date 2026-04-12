@@ -24,6 +24,7 @@ const list = ref<ITeacherLectureItem[]>([])
 const statusMap: Record<string, { text: string, type: 'default' | 'warning' | 'success' | 'danger' }> = {
   draft: { text: '草稿', type: 'default' },
   pending: { text: '待审核', type: 'warning' },
+  reject: { text: '已驳回', type: 'danger' },
   published: { text: '已发布', type: 'success' },
   finished: { text: '已结束', type: 'default' },
   cancelled: { text: '已取消', type: 'danger' },
@@ -41,8 +42,18 @@ function formatTime(value?: string) {
     return '--'
   }
 
-  const normalized = value.replace('T', ' ')
-  return normalized.length >= 16 ? normalized.slice(0, 16) : normalized
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    const normalized = value.replace('T', ' ')
+    return normalized.length >= 16 ? normalized.slice(0, 16) : normalized
+  }
+
+  const yyyy = date.getFullYear()
+  const MM = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  const HH = String(date.getHours()).padStart(2, '0')
+  const mm = String(date.getMinutes()).padStart(2, '0')
+  return `${yyyy}-${MM}-${dd} ${HH}:${mm}`
 }
 
 function getStatusText(status: string) {
@@ -61,6 +72,28 @@ function getStatusClass(status: string) {
     return 'tag-danger'
   }
   return 'tag-default'
+}
+
+function formatLectureTags(item: ITeacherLectureItem) {
+  const tags = item.tags || []
+  if (tags.length === 0) {
+    return '--'
+  }
+  return tags.map(tag => tag.name).filter(Boolean).join(' / ')
+}
+
+function isBeforeRegistrationStarts(value?: string) {
+  if (!value) {
+    return false
+  }
+
+  const normalized = value.replace(' ', 'T')
+  const startTime = new Date(normalized)
+  if (Number.isNaN(startTime.getTime())) {
+    return false
+  }
+
+  return Date.now() < startTime.getTime()
 }
 
 async function loadLectures(reset = false) {
@@ -128,6 +161,14 @@ function handleToDetail(item: ITeacherLectureItem) {
 }
 
 function handleEdit(item: ITeacherLectureItem) {
+  if (item.status === 'published' && !isBeforeRegistrationStarts(item.registrationStartsTime)) {
+    uni.showToast({
+      title: '已通过讲座仅可在报名开始前重新编辑',
+      icon: 'none',
+    })
+    return
+  }
+
   uni.navigateTo({
     url: `/pages-sub/my/apply/index?mode=edit&lectureId=${item.id}`,
     fail: () => {
@@ -170,7 +211,7 @@ function handleDelete(item: ITeacherLectureItem) {
   })
 }
 
-onLoad(() => {
+onShow(() => {
   void loadLectures(true)
 })
 
@@ -220,8 +261,18 @@ onReachBottom(() => {
         </view>
 
         <view class="card-row">
+          <text class="label">标签</text>
+          <text class="value">{{ formatLectureTags(item) }}</text>
+        </view>
+
+        <view class="card-row">
           <text class="label">剩余名额</text>
           <text class="value">{{ item.remaining ?? 0 }} 人</text>
+        </view>
+
+        <view v-if="item.status === 'reject'" class="card-row">
+          <text class="label">驳回原因</text>
+          <text class="value value-danger">{{ item.reason || '未填写驳回原因' }}</text>
         </view>
 
         <view class="card-actions">
@@ -347,6 +398,10 @@ onReachBottom(() => {
   font-size: 13px;
   line-height: 1.5;
   word-break: break-all;
+}
+
+.value-danger {
+  color: #b91c1c;
 }
 
 .card-actions {

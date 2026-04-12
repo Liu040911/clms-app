@@ -4,51 +4,17 @@ import type {
   IClassroomItem,
   ICreateLectureApplyReq,
   ILectureInfo,
+  IUserLectureAppointmentItem,
+  IUserLectureAppointmentQuery,
+  ILectureRegistrationInfo,
+  ILectureRegistrationReq,
+  LectureTagListItem,
   ITeacherLectureItem,
   ITeacherLectureListQuery,
   LectureDetailInfo,
 } from './types/lecture'
 import { BASE_URL } from '@/api/types'
 import { http } from '@/http/http'
-
-const hotLectureListMock: HotLectureListItem[] = [
-  {
-    id: 'L001',
-    title: 'AI 前沿技术讲座',
-    tag: '学术提升',
-    posterUrl: '/static/images/default-avatar.png',
-  },
-  {
-    id: 'L002',
-    title: '保研经验分享会',
-    tag: '近期热门',
-    posterUrl: '/static/images/default-avatar.png',
-  },
-  {
-    id: 'L003',
-    title: '校友求职公开课',
-    tag: '就业指导',
-    posterUrl: '/static/images/default-avatar.png',
-  },
-  {
-    id: 'L004',
-    title: '科研立项方法论',
-    tag: '学术提升',
-    posterUrl: '/static/images/default-avatar.png',
-  },
-  {
-    id: 'L005',
-    title: '面试实战训练营',
-    tag: '就业指导',
-    posterUrl: '/static/images/default-avatar.png',
-  },
-  {
-    id: 'L006',
-    title: '跨学科创新论坛',
-    tag: '综合素养',
-    posterUrl: '/static/images/default-avatar.png',
-  },
-]
 
 const lectureDetailMapMock: Record<string, LectureDetailInfo> = {
   L001: {
@@ -150,11 +116,17 @@ function wait(ms: number) {
 }
 
 /**
- * 获取近期热门讲座列表（Mock）
+ * 获取近期热门讲座列表（真实接口）
  */
-export async function getRecentHotLectureList() {
-  await wait(250)
-  return hotLectureListMock
+export function getRecentHotLectureList(query?: IHotLectureListQuery) {
+  return http.get<HotLectureListItem[]>(`${BASE_URL}/lecture/hot/list`, query)
+}
+
+/**
+ * 获取讲座标签列表（真实接口）
+ */
+export function getLectureTagList() {
+  return http.get<LectureTagListItem[]>(`${BASE_URL}/lecture/tag/list`)
 }
 
 /**
@@ -184,10 +156,44 @@ export function createLectureApply(data: ICreateLectureApplyReq) {
 }
 
 /**
+ * 更新讲座申请
+ */
+export function updateLectureApply(lectureId: string, data: ICreateLectureApplyReq) {
+  return http.post<void>(`${BASE_URL}/lecture/update`, data, { lectureId })
+}
+
+/**
  * 获取讲座详情（真实接口）
  */
 export function getLectureInfoById(lectureId: string) {
   return http.get<ILectureInfo>(`${BASE_URL}/lecture/info`, { lectureId })
+}
+
+/**
+ * 用户报名讲座
+ */
+export function registerLecture(data: ILectureRegistrationReq) {
+  return http.post<ILectureRegistrationInfo>(`${BASE_URL}/user/registration/create`, data, undefined, undefined, {
+    hideErrorToast: true,
+    rejectOnBusinessError: true,
+  })
+}
+
+/**
+ * 用户取消讲座报名
+ */
+export function cancelLectureRegistration(data: ILectureRegistrationReq) {
+  return http.post<ILectureRegistrationInfo>(`${BASE_URL}/user/registration/cancel`, data, undefined, undefined, {
+    hideErrorToast: true,
+    rejectOnBusinessError: true,
+  })
+}
+
+/**
+ * 分页获取我的预约讲座
+ */
+export function getUserLectureAppointmentList(query: IUserLectureAppointmentQuery) {
+  return http.get<IBackendPageResult<IUserLectureAppointmentItem>>(`${BASE_URL}/user/registration/list`, query)
 }
 
 /**
@@ -202,4 +208,9 @@ export function getTeacherLectureList(query: ITeacherLectureListQuery) {
  */
 export function deleteLectureById(lectureId: string) {
   return http.post<void>(`${BASE_URL}/lecture/delete`, {}, { lectureId })
+}
+
+export interface IHotLectureListQuery {
+  tagId?: string
+  limit?: number
 }

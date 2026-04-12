@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import type { HotLectureListItem } from '@/api/types/lecture'
-import { getRecentHotLectureList } from '@/api/lecture'
+import type { HotLectureListItem, LectureTagListItem } from '@/api/types/lecture'
+import { getLectureTagList, getRecentHotLectureList } from '@/api/lecture'
 import { usePageScrollableHeight } from '@/hooks/usePageScrollableHeight'
 
 defineOptions({
@@ -16,21 +16,27 @@ definePage({
   },
 })
 
-const categoryList = [
-  { icon: '🎤', name: '名师讲座' },
-  { icon: '💡', name: '学术沙龙' },
-  { icon: '🏫', name: '学院专场' },
-  { icon: '🧪', name: '科研分享' },
-  { icon: '💼', name: '就业指导' },
-  { icon: '📝', name: '报名签到' },
-  { icon: '📚', name: '考研规划' },
-  { icon: '🧭', name: '生涯导航' },
-  { icon: '🏅', name: '竞赛经验' },
-  { icon: '✨', name: '更多讲座' },
-]
+const iconKeyMap: Record<string, string> = {
+  'teacher-talk': '🎤',
+  'academic-salon': '💡',
+  'college-special': '🏫',
+  'research-share': '🧪',
+  'career-guide': '💼',
+  'signup-checkin': '📝',
+  'postgraduate-plan': '📚',
+  'career-navigation': '🧭',
+  'competition-exp': '🏅',
+  'more-lecture': '✨',
+}
 
-const hotTabs = ['近期热门', '学术提升', '就业指导', '综合素养']
-const activeTab = ref(hotTabs[0])
+const categoryList = ref<LectureTagListItem[]>([])
+const categoryLoading = ref(false)
+
+const HOT_TAB_ALL = '近期热门'
+const activeTab = ref(HOT_TAB_ALL)
+const hotTabs = computed(() => {
+  return [HOT_TAB_ALL, ...categoryList.value.map(item => item.name)]
+})
 const searchRightOffset = ref('0rpx')
 const searchBarHeight = ref('72rpx')
 const searchTopOffset = ref('20rpx')
@@ -91,7 +97,7 @@ onLoad(() => {
   // #endif
 
   updatePageScrollableHeight()
-  void fetchRecentHotLectureList()
+  void fetchLectureTagList()
 
   console.log('首页加载完成')
 })
@@ -110,17 +116,69 @@ function handleCategoryClick(name: string) {
   uni.showToast({ title: `${name}开发中`, icon: 'none' })
 }
 
+function isImageUrl(value?: string) {
+  if (!value)
+    return false
+  return /^https?:\/\//i.test(value) || value.startsWith('/')
+}
+
+function getCategoryIconEmoji(icon?: string) {
+  if (!icon)
+    return '✨'
+  return iconKeyMap[icon] || icon
+}
+
+async function fetchLectureTagList() {
+  categoryLoading.value = true
+  try {
+    const list = await getLectureTagList()
+    categoryList.value = list || []
+
+    if (!hotTabs.value.includes(activeTab.value)) {
+      activeTab.value = HOT_TAB_ALL
+    }
+
+    void fetchRecentHotLectureList()
+  }
+  catch {
+    // 标签加载失败时保底展示空态，不中断首页其它模块。
+    categoryList.value = []
+    activeTab.value = HOT_TAB_ALL
+    void fetchRecentHotLectureList()
+  }
+  finally {
+    categoryLoading.value = false
+  }
+}
+
 function handleTabClick(tab: string) {
+  if (activeTab.value === tab) {
+    return
+  }
+
   activeTab.value = tab
+  void fetchRecentHotLectureList()
+}
+
+function resolveTagIdByTab(tab: string) {
+  if (tab === HOT_TAB_ALL) {
+    return undefined
+  }
+
+  return categoryList.value.find(item => item.name === tab)?.id
 }
 
 async function fetchRecentHotLectureList() {
   recommendLoading.value = true
   try {
-    const list = await getRecentHotLectureList()
-    recommendList.value = list
+    const list = await getRecentHotLectureList({
+      tagId: resolveTagIdByTab(activeTab.value),
+      limit: 6,
+    })
+    recommendList.value = list || []
   }
   catch {
+    recommendList.value = []
     uni.showToast({
       title: '热门讲座加载失败',
       icon: 'none',
@@ -188,15 +246,29 @@ function handleRecommendClick(id: string) {
             校园讲座专题，一键预约快速报名
           </view>
 
-          <view class="grid grid-cols-5 gap-y-24rpx">
+          <view v-if="categoryLoading" class="py-24rpx text-center text-24rpx text-gray-400">
+            分类加载中...
+          </view>
+
+          <view v-else-if="categoryList.length === 0" class="py-24rpx text-center text-24rpx text-gray-400">
+            暂无分类数据
+          </view>
+
+          <view v-else class="grid grid-cols-5 gap-y-24rpx">
             <view
               v-for="item in categoryList"
-              :key="item.name"
+              :key="item.id"
               class="flex flex-col items-center"
               @tap="handleCategoryClick(item.name)"
             >
               <view class="mb-8rpx h-72rpx w-72rpx flex items-center justify-center rounded-9999rpx bg-blue-50 text-34rpx">
-                {{ item.icon }}
+                <image
+                  v-if="isImageUrl(item.icon)"
+                  :src="item.icon"
+                  mode="aspectFit"
+                  class="h-38rpx w-38rpx"
+                />
+                <text v-else>{{ getCategoryIconEmoji(item.icon) }}</text>
               </view>
               <text class="text-20rpx text-gray-600">
                 {{ item.name }}
@@ -210,11 +282,11 @@ function handleRecommendClick(id: string) {
             热门讲座推荐
           </view>
 
-          <view class="mb-20rpx flex flex-wrap gap-12rpx">
+          <view class="hot-tabs-grid">
             <view
               v-for="tab in hotTabs"
               :key="tab"
-              class="rounded-9999rpx px-20rpx py-8rpx text-22rpx"
+              class="hot-tabs-item"
               :class="activeTab === tab ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'"
               @tap="handleTabClick(tab)"
             >
@@ -248,3 +320,24 @@ function handleRecommendClick(id: string) {
     </scroll-view>
   </view>
 </template>
+
+<style scoped>
+.hot-tabs-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12rpx;
+  margin-bottom: 20rpx;
+}
+
+.hot-tabs-item {
+  min-height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999rpx;
+  padding: 8rpx 10rpx;
+  text-align: center;
+  font-size: 20rpx;
+  line-height: 1.2;
+}
+</style>

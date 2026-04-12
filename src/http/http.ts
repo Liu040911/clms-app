@@ -96,10 +96,21 @@ export function http<T>(options: CustomRequestOptions) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           // 处理业务逻辑错误
           if (code !== ResultEnum.Success0 && code !== ResultEnum.Success200) {
-            uni.showToast({
-              icon: 'none',
-              title: responseData.msg || responseData.message || '请求错误',
-            })
+            const businessMsg = responseData.msg || responseData.message || '请求错误'
+            if (!options.hideErrorToast) {
+              uni.showToast({
+                icon: 'none',
+                title: businessMsg,
+              })
+            }
+            if (options.rejectOnBusinessError) {
+              return reject({
+                ...res,
+                businessCode: code,
+                msg: businessMsg,
+                responseData,
+              })
+            }
           }
           return resolve(responseData.data)
         }

@@ -47,67 +47,133 @@ function chooseImageFromSource(sourceType: Array<'album' | 'camera'>): Promise<s
   })
 }
 
+function normalizeTempFilePath(path: string) {
+  if (!path)
+    return ''
+
+  // #ifdef MP-WEIXIN
+  if (path.startsWith('http://tmp/')) {
+    return path.replace('http://tmp/', 'wxfile://tmp/')
+  }
+  if (path.startsWith('/tmp/')) {
+    return `wxfile://${path}`
+  }
+  // #endif
+
+  return path
+}
+
+function denormalizeTempFilePath(path: string) {
+  if (!path)
+    return ''
+
+  // #ifdef MP-WEIXIN
+  if (path.startsWith('wxfile://tmp/')) {
+    return path.replace('wxfile://tmp/', 'http://tmp/')
+  }
+  // #endif
+
+  return path
+}
+
+function getPathCandidates(path: string) {
+  const candidates = [
+    path,
+    normalizeTempFilePath(path),
+    denormalizeTempFilePath(path),
+  ].filter(Boolean)
+
+  return Array.from(new Set(candidates))
+}
+
+function compressLocalImage(localPath: string): Promise<string> {
+  return new Promise((resolve) => {
+    const candidates = getPathCandidates(localPath)
+    let current = 0
+
+    const tryCompress = () => {
+      if (current >= candidates.length) {
+        resolve(localPath)
+        return
+      }
+
+      const src = candidates[current]
+      current += 1
+
+      uni.compressImage({
+        src,
+        quality: 80,
+        success: (compressRes) => {
+          resolve(compressRes.tempFilePath || src)
+        },
+        fail: () => {
+          tryCompress()
+        },
+      })
+    }
+
+    tryCompress()
+  })
+}
+
+function uploadImageByFilePath(filePath: string, token: string, key: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const candidates = getPathCandidates(filePath)
+    let current = 0
+
+    const tryUpload = () => {
+      if (current >= candidates.length) {
+        reject(new Error('uploadFile failed on all path candidates'))
+        return
+      }
+
+      const targetPath = candidates[current]
+      current += 1
+
+      uni.uploadFile({
+        url: 'https://up-z2.qiniup.com',
+        filePath: targetPath,
+        name: 'file',
+        formData: {
+          token,
+          key,
+        },
+        success: (uploadRes) => {
+          if (uploadRes.statusCode >= 200 && uploadRes.statusCode < 300) {
+            const uploadData = typeof uploadRes.data === 'string'
+              ? JSON.parse(uploadRes.data || '{}')
+              : (uploadRes.data as Record<string, any>)
+            resolve(`http://td4d4v1ov.hn-bkt.clouddn.com/${uploadData?.key || key}`)
+            return
+          }
+          tryUpload()
+        },
+        fail: () => {
+          tryUpload()
+        },
+      })
+    }
+
+    tryUpload()
+  })
+}
+
 // 上传本地图片到服务器 - 使用与useUpload完全一致的逻辑
 function uploadLocalImage(localPath: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    // 先压缩图片
-    uni.compressImage({
-      src: localPath,
-      quality: 80,
-      success: (compressRes) => {
-        // 读取压缩后的图片文件为base64
-        uni.getFileSystemManager().readFile({
-          filePath: compressRes.tempFilePath,
-          encoding: 'base64',
-          success: ({ data }) => {
-            // 使用与useUpload完全相同的逻辑
-            const key = `${Date.now()}-${userStore.userInfo?.id || 'anonymous'}-${Math.random().toString(36).slice(2)}`
+    const key = `${Date.now()}-${userStore.userInfo?.id || 'anonymous'}-${Math.random().toString(36).slice(2)}`
 
-            // 获取上传token
-            http
-              .get<string>(`${BASE_URL}/api/upload/token`)
-              .then((tokenRes) => {
-                // 直接调用 uni.request，避免外部域名401触发项目的token刷新重试逻辑
-                uni.request({
-                  url: 'https://up-z2.qiniup.com/putb64/-1',
-                  method: 'POST',
-                  data: data as any,
-                  header: {
-                    'Authorization': `UpToken ${tokenRes}`,
-                    'Content-Type': 'application/octet-stream',
-                  },
-                  success: (uploadRes) => {
-                    if (uploadRes.statusCode >= 200 && uploadRes.statusCode < 300) {
-                      const uploadData = uploadRes.data as Record<string, any>
-                      const imageUrl = `http://td4d4v1ov.hn-bkt.clouddn.com/${uploadData?.key || key}`
-                      resolve(imageUrl)
-                      return
-                    }
-                    console.error('上传失败:', uploadRes)
-                    reject(uploadRes)
-                  },
-                  fail: (err) => {
-                    console.error('上传失败:', err)
-                    reject(err)
-                  },
-                })
-              })
-              .catch((err) => {
-                console.error('获取token失败:', err)
-                reject(err)
-              })
-          },
-          fail: (error) => {
-            console.error('读取文件失败:', error)
-            reject(error)
-          },
-        })
-      },
-      fail: (error) => {
-        console.error('压缩图片失败:', error)
-        reject(error)
-      },
-    })
+    http
+      .get<string>(`${BASE_URL}/api/upload/token`)
+      .then(async (tokenRes) => {
+        const compressedPath = await compressLocalImage(localPath)
+        const imageUrl = await uploadImageByFilePath(compressedPath, tokenRes, key)
+        resolve(imageUrl)
+      })
+      .catch((err) => {
+        console.error('上传失败:', err)
+        reject(err)
+      })
   })
 }
 
