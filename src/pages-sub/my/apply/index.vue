@@ -1,12 +1,13 @@
 <script lang="ts" setup>
 import type { ICreateLectureApplyReq } from '@/api/types/lecture'
-import { computed, reactive, ref } from 'vue'
-import { createLectureApply, getClassroomList } from '@/api/lecture'
+import { computed, reactive, ref, watch } from 'vue'
+import { createLectureApply, getClassroomList, getLectureInfoById, updateLectureApply } from '@/api/lecture'
 import { BASE_URL } from '@/api/types'
 import DateTimePickerField from '@/components/DateTimePickerField/index.vue'
 import useRequest from '@/hooks/useRequest'
 import { http } from '@/http/http'
 import { useUserStore } from '@/store/user'
+import dayjs from 'dayjs'
 
 definePage({
   style: {
@@ -18,6 +19,16 @@ definePage({
 const userStore = useUserStore()
 const systemInfo = uni.getSystemInfoSync()
 const safeAreaInsets = systemInfo.safeAreaInsets || { top: 0, right: 0, bottom: 0, left: 0 }
+const isEditMode = ref(false)
+const currentLectureId = ref('')
+const currentLectureStatus = ref('')
+const loadingLectureDetail = ref(false)
+const currentLectureClassOption = ref<{
+  id: string
+  location: string
+  capacity?: number
+  displayLabel: string
+} | null>(null)
 
 // ============ 表单数据 ============
 const formData = reactive({
@@ -51,8 +62,6 @@ const errors = reactive({
 
 const hasErrors = computed(() => Object.values(errors).some(error => error !== ''))
 
-const selectedClassIndex = ref(-1)
-
 const classPickerRange = computed(() => {
   const list = classList.value || []
   return list.map(item => ({
@@ -61,8 +70,31 @@ const classPickerRange = computed(() => {
   }))
 })
 
+const classOptions = computed(() => {
+  const options = [...classPickerRange.value]
+  const current = currentLectureClassOption.value
+
+  if (!current) {
+    return options
+  }
+
+  const existed = options.some(item => item.id === current.id)
+  if (existed) {
+    return options
+  }
+
+  return [current, ...options]
+})
+
+const selectedClassId = computed(() => formData.classIds[0] || '')
+
+const selectedClassIndex = computed(() => {
+  const index = classOptions.value.findIndex(item => item.id === selectedClassId.value)
+  return index >= 0 ? index : 0
+})
+
 const selectedClassLabel = computed(() => {
-  const selected = classPickerRange.value[selectedClassIndex.value]
+  const selected = classOptions.value.find(item => item.id === selectedClassId.value)
   if (!selected) {
     return '请选择教室'
   }
@@ -71,13 +103,58 @@ const selectedClassLabel = computed(() => {
 
 function handleClassChange(event: any) {
   const index = Number(event?.detail?.value)
-  if (Number.isNaN(index) || index < 0 || index >= classPickerRange.value.length) {
+  if (Number.isNaN(index) || index < 0 || index >= classOptions.value.length) {
     return
   }
 
-  selectedClassIndex.value = index
-  const selected = classPickerRange.value[index]
+  const selected = classOptions.value[index]
   formData.classIds = selected?.id ? [selected.id] : []
+}
+
+function formatLectureTime(value?: string) {
+  if (!value) {
+    return ''
+  }
+
+  const parsed = dayjs(value)
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD HH:mm:ss') : value.replace('T', ' ')
+}
+
+async function loadLectureForEdit(lectureId: string) {
+  loadingLectureDetail.value = true
+  try {
+    const res = await getLectureInfoById(lectureId)
+    if (!res) {
+      throw new Error('讲座信息不存在')
+    }
+
+    formData.title = res.title || ''
+    formData.description = res.description || ''
+    formData.coverImageUrl = res.coverImageUrl || ''
+    formData.registrationStartsTime = formatLectureTime(res.registrationStartsTime)
+    formData.registrationEndsTime = formatLectureTime(res.registrationEndsTime)
+    formData.lectureStartsTime = formatLectureTime(res.lectureStartTime)
+    formData.lectureEndsTime = formatLectureTime(res.lectureEndTime)
+    formData.classIds = res.classId ? [res.classId] : []
+    currentLectureClassOption.value = res.classId
+      ? {
+          id: res.classId,
+          location: res.location || '未知教室',
+          displayLabel: res.location ? `${res.location}（当前讲座教室）` : '当前讲座教室',
+        }
+      : null
+    currentLectureStatus.value = res.status || ''
+  }
+  catch (error) {
+    console.error('加载讲座信息失败:', error)
+    uni.showToast({
+      title: '加载讲座信息失败',
+      icon: 'none',
+    })
+  }
+  finally {
+    loadingLectureDetail.value = false
+  }
 }
 
 function validateForm(): boolean {
@@ -155,95 +232,165 @@ function validateForm(): boolean {
 // ============ 上传海报 ============
 const uploadLoading = ref(false)
 
+function normalizeTempFilePath(path: string) {
+  if (!path)
+    return ''
+
+  // #ifdef MP-WEIXIN
+  if (path.startsWith('http://tmp/')) {
+    return path.replace('http://tmp/', 'wxfile://tmp/')
+  }
+  if (path.startsWith('/tmp/')) {
+    return `wxfile://${path}`
+  }
+  // #endif
+
+  return path
+}
+
+function denormalizeTempFilePath(path: string) {
+  if (!path)
+    return ''
+
+  // #ifdef MP-WEIXIN
+  if (path.startsWith('wxfile://tmp/')) {
+    return path.replace('wxfile://tmp/', 'http://tmp/')
+  }
+  // #endif
+
+  return path
+}
+
+function getPathCandidates(path: string) {
+  const candidates = [
+    path,
+    normalizeTempFilePath(path),
+    denormalizeTempFilePath(path),
+  ].filter(Boolean)
+
+  return Array.from(new Set(candidates))
+}
+
+function choosePosterFilePath(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    uni.chooseImage({
+      count: 1,
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: (chooseRes) => {
+        const rawPath = (chooseRes as any)?.tempFilePaths?.[0] || (chooseRes as any)?.tempFiles?.[0]?.tempFilePath || ''
+        resolve(rawPath)
+      },
+      fail: err => reject(err),
+    })
+  })
+}
+
+function compressPoster(localPath: string): Promise<string> {
+  return new Promise((resolve) => {
+    const candidates = getPathCandidates(localPath)
+    let current = 0
+
+    const tryCompress = () => {
+      if (current >= candidates.length) {
+        // 压缩失败时降级使用原图，避免流程中断
+        resolve(localPath)
+        return
+      }
+
+      const src = candidates[current]
+      current += 1
+
+      uni.compressImage({
+        src,
+        quality: 80,
+        success: (compressRes) => {
+          resolve(compressRes.tempFilePath || src)
+        },
+        fail: () => {
+          tryCompress()
+        },
+      })
+    }
+
+    tryCompress()
+  })
+}
+
+function uploadPosterByFilePath(filePath: string, token: string, key: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const candidates = getPathCandidates(filePath)
+    let current = 0
+
+    const tryUpload = () => {
+      if (current >= candidates.length) {
+        reject(new Error('uploadFile failed on all path candidates'))
+        return
+      }
+
+      const targetPath = candidates[current]
+      current += 1
+
+      uni.uploadFile({
+        url: 'https://up-z2.qiniup.com',
+        filePath: targetPath,
+        name: 'file',
+        formData: {
+          token,
+          key,
+        },
+        success: (uploadRes) => {
+          if (uploadRes.statusCode >= 200 && uploadRes.statusCode < 300) {
+            const uploadData = typeof uploadRes.data === 'string'
+              ? JSON.parse(uploadRes.data || '{}')
+              : (uploadRes.data as Record<string, any>)
+            resolve(`http://td4d4v1ov.hn-bkt.clouddn.com/${uploadData?.key || key}`)
+            return
+          }
+          tryUpload()
+        },
+        fail: () => {
+          tryUpload()
+        },
+      },
+      )
+    }
+
+    tryUpload()
+  })
+}
+
 async function handleChoosePoster() {
   try {
-    const res = await new Promise<any>((resolve, reject) => {
-      uni.chooseImage({
-        count: 1,
-        sizeType: ['compressed'],
-        sourceType: ['album', 'camera'],
-        success: (chooseRes) => {
-          const tempFilePath = (chooseRes as any)?.tempFilePaths?.[0] || (chooseRes as any)?.tempFiles?.[0]?.tempFilePath || ''
-          resolve({ tempFilePath })
-        },
-        fail: err => reject(err),
-      })
-    })
-
-    if (!res.tempFilePath) {
+    const localPath = await choosePosterFilePath()
+    if (!localPath) {
       return
     }
 
     uploadLoading.value = true
     uni.showLoading({ title: '海报上传中...' })
 
-    // 使用上传逻辑 - 获取 token 后上传
-    const getTokenRes = await getUploadToken()
-    const tokenRes = getTokenRes
+    const token = await getUploadToken()
+    const compressedPath = await compressPoster(localPath)
+    const key = `${Date.now()}-${userStore.userInfo?.id || 'anonymous'}-${Math.random().toString(36).slice(2)}`
+    const imageUrl = await uploadPosterByFilePath(compressedPath, token, key)
 
-    // 读取文件
-    const fileSystemManager = uni.getFileSystemManager()
-    fileSystemManager.readFile({
-      filePath: res.tempFilePath,
-      encoding: 'base64',
-      success: ({ data }) => {
-        const key = `${Date.now()}-${userStore.userInfo?.id || 'anonymous'}-${Math.random().toString(36).slice(2)}`
-
-        uni.request({
-          url: 'https://up-z2.qiniup.com/putb64/-1',
-          method: 'POST',
-          data: data as any,
-          header: {
-            'Authorization': `UpToken ${tokenRes}`,
-            'Content-Type': 'application/octet-stream',
-          },
-          success: (uploadRes) => {
-            uni.hideLoading()
-            uploadLoading.value = false
-            if (uploadRes.statusCode >= 200 && uploadRes.statusCode < 300) {
-              const uploadData = uploadRes.data as Record<string, any>
-              formData.coverImageUrl = `http://td4d4v1ov.hn-bkt.clouddn.com/${uploadData?.key || key}`
-              uni.showToast({
-                title: '海报上传成功',
-                icon: 'success',
-              })
-              return
-            }
-            console.error('上传失败:', uploadRes)
-            uni.showToast({
-              title: '上传失败，请重试',
-              icon: 'none',
-            })
-          },
-          fail: (err) => {
-            uni.hideLoading()
-            uploadLoading.value = false
-            console.error('上传失败:', err)
-            uni.showToast({
-              title: '上传失败，请重试',
-              icon: 'none',
-            })
-          },
-        })
-      },
-      fail: (error) => {
-        uni.hideLoading()
-        uploadLoading.value = false
-        console.error('读取文件失败:', error)
-        uni.showToast({
-          title: '读取文件失败',
-          icon: 'none',
-        })
-      },
+    formData.coverImageUrl = imageUrl
+    uni.showToast({
+      title: '海报上传成功',
+      icon: 'success',
     })
   }
   catch (error) {
-    uploadLoading.value = false
-    console.error('选择文件失败:', error)
+    console.error('海报上传失败:', error)
     uni.showToast({
-      title: '选择文件失败',
+      title: '上传失败，请重试',
       icon: 'none',
     })
+  }
+  finally {
+    uploadLoading.value = false
+    uni.hideLoading()
   }
 }
 
@@ -280,11 +427,16 @@ async function handleSubmit() {
       classIds: formData.classIds,
     }
 
-    await createLectureApply(submitData)
+    if (isEditMode.value && currentLectureId.value) {
+      await updateLectureApply(currentLectureId.value, submitData)
+    }
+    else {
+      await createLectureApply(submitData)
+    }
 
     uni.hideLoading()
     uni.showToast({
-      title: '讲座申请成功！',
+      title: isEditMode.value ? '讲座修改成功！' : '讲座申请成功！',
       icon: 'success',
     })
 
@@ -320,8 +472,33 @@ function handleReset() {
   formData.lectureStartsTime = ''
   formData.lectureEndsTime = ''
   formData.classIds = []
-  selectedClassIndex.value = -1
 }
+
+const submitButtonText = computed(() => {
+  if (submitting.value) {
+    return '提交中...'
+  }
+
+  if (isEditMode.value && currentLectureStatus.value === 'reject') {
+    return '重新申请'
+  }
+
+  if (isEditMode.value) {
+    return '保存修改'
+  }
+
+  return '提交申请'
+})
+
+onLoad((options) => {
+  const lectureId = typeof options?.lectureId === 'string' ? options.lectureId : ''
+  const mode = typeof options?.mode === 'string' ? options.mode : ''
+  if (mode === 'edit' && lectureId) {
+    isEditMode.value = true
+    currentLectureId.value = lectureId
+    void loadLectureForEdit(lectureId)
+  }
+})
 </script>
 
 <template>
@@ -456,15 +633,17 @@ function handleReset() {
         <view v-if="classLoading" class="py-4 text-center text-gray-500">
           加载中...
         </view>
-        <view v-else-if="!classList || classList.length === 0" class="py-4 text-center text-gray-500">
-          暂无可用教室
-        </view>
         <view v-else>
+          <view v-if="classOptions.length === 0" class="py-2 text-center text-gray-500">
+            暂无可用教室
+          </view>
+
           <picker
+            v-else
             mode="selector"
-            :range="classPickerRange"
+            :range="classOptions"
             range-key="displayLabel"
-            :value="selectedClassIndex < 0 ? 0 : selectedClassIndex"
+            :value="selectedClassIndex"
             @change="handleClassChange"
           >
             <view class="h-12 flex items-center justify-between border border-gray-300 rounded bg-white px-3 text-sm text-gray-700">
@@ -483,7 +662,7 @@ function handleReset() {
           class="flex-1 rounded-lg bg-blue-500 py-3 text-white font-medium disabled:cursor-not-allowed disabled:opacity-50"
           @click="handleSubmit"
         >
-          {{ submitting ? '提交中...' : '提交申请' }}
+          {{ submitButtonText }}
         </button>
         <button
           :disabled="submitting"

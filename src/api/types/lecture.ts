@@ -5,6 +5,22 @@ export interface HotLectureListItem {
   posterUrl: string
 }
 
+export interface LectureTagListItem {
+  id: string
+  name: string
+  description?: string
+  type?: string
+  icon?: string
+}
+
+export interface LectureTagItem {
+  id: string
+  name: string
+  description?: string
+  type?: string
+  icon?: string
+}
+
 export interface LectureDetailInfo {
   id: string
   title: string
@@ -69,8 +85,10 @@ export interface ITeacherLectureItem {
   lectureEndTime: string
   remaining: number
   status: string
+  reason?: string
   classId?: string
   location?: string
+  tags?: LectureTagItem[]
   createTime?: string
   updateTime?: string
 }
@@ -98,7 +116,52 @@ export interface ILectureInfo {
   lectureEndTime: string
   remaining: number
   status: string
+  reason?: string
   classId?: string
+  location?: string
+  tags?: LectureTagItem[]
+  createTime?: string
+  updateTime?: string
+}
+
+export interface ILectureRegistrationReq {
+  lectureId: string
+}
+
+export interface ILectureRegistrationInfo {
+  id: string
+  userId: string
+  lectureId: string
+  registrationTime: string
+  status: string
+  checkInTime?: string
+  createTime?: string
+  updateTime?: string
+}
+
+export interface IUserLectureAppointmentQuery {
+  status?: string
+  page?: number
+  size?: number
+}
+
+export interface IUserLectureAppointmentItem {
+  id: string
+  userId: string
+  lectureId: string
+  registrationTime?: string
+  registrationStatus: string
+  checkInTime?: string
+  title?: string
+  coverImageUrl?: string
+  teacherId?: string
+  teacherName?: string
+  registrationStartsTime?: string
+  registrationEndsTime?: string
+  lectureStartTime?: string
+  lectureEndTime?: string
+  remaining?: number
+  lectureStatus?: string
   location?: string
   createTime?: string
   updateTime?: string

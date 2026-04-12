@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ILectureInfo } from '@/api/types/lecture'
 import { computed, nextTick, ref, watch } from 'vue'
-import { getLectureInfoById } from '@/api/lecture'
+import { getLectureInfoById, registerLecture } from '@/api/lecture'
 import GradientButton from '@/components/GradientButton/index.vue'
 import PageSafeArea from '@/components/PageSafeArea/index.vue'
 
@@ -18,9 +18,10 @@ definePage({
   },
 })
 
-const defaultLectureId = 'L001'
+const currentLectureId = ref('')
 const lecture = ref<ILectureInfo | null>(null)
 const detailLoading = ref(false)
+const registerLoading = ref(false)
 const scrollEnabled = ref(false)
 const lectureStatus = ref('published')
 
@@ -34,6 +35,10 @@ const remainingSeats = computed(() => {
 
 const currentStatus = computed(() => lecture.value?.status || lectureStatus.value)
 
+const lectureTags = computed(() => {
+  return lecture.value?.tags || []
+})
+
 const statusTextMap: Record<string, string> = {
   draft: '草稿',
   pending: '待审核',
@@ -45,6 +50,9 @@ const statusTextMap: Record<string, string> = {
 const statusText = computed(() => statusTextMap[currentStatus.value] || currentStatus.value || '未知状态')
 
 const registerButtonText = computed(() => {
+  if (registerLoading.value) {
+    return '报名中...'
+  }
   if (currentStatus.value === 'draft') {
     return '草稿中'
   }
@@ -64,6 +72,9 @@ const registerButtonText = computed(() => {
 })
 
 const registerDisabled = computed(() => {
+  if (registerLoading.value || detailLoading.value) {
+    return true
+  }
   if (currentStatus.value !== 'published') {
     return true
   }
@@ -74,7 +85,18 @@ function formatTime(time?: string) {
   if (!time) {
     return '--'
   }
-  return time.replace('T', ' ').slice(0, 16)
+
+  const date = new Date(time)
+  if (Number.isNaN(date.getTime())) {
+    return time.replace('T', ' ').slice(0, 16)
+  }
+
+  const yyyy = date.getFullYear()
+  const MM = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  const HH = String(date.getHours()).padStart(2, '0')
+  const mm = String(date.getMinutes()).padStart(2, '0')
+  return `${yyyy}-${MM}-${dd} ${HH}:${mm}`
 }
 
 async function fetchLectureDetailById(lectureId: string) {
@@ -117,12 +139,16 @@ function updateScrollEnabled() {
 }
 
 onLoad((options) => {
-  const lectureId = typeof options?.id === 'string' ? options.id : defaultLectureId
+  const lectureId = typeof options?.id === 'string' ? options.id : ''
+  currentLectureId.value = lectureId
   const status = typeof options?.status === 'string' ? options.status : ''
   if (status) {
     lectureStatus.value = status
   }
-  void fetchLectureDetailById(lectureId)
+})
+
+onShow(() => {
+  void fetchLectureDetailById(currentLectureId.value)
 })
 
 onReady(() => {
@@ -149,7 +175,11 @@ function handleBack() {
   })
 }
 
-function handleRegister() {
+async function handleRegister() {
+  if (registerLoading.value) {
+    return
+  }
+
   if (currentStatus.value !== 'published') {
     uni.showToast({
       title: `当前状态：${registerButtonText.value}`,
@@ -174,10 +204,44 @@ function handleRegister() {
     return
   }
 
-  uni.showToast({
-    title: '报名成功，请准时参加',
-    icon: 'success',
+  const lectureId = lecture.value?.id || currentLectureId.value
+  if (!lectureId) {
+    uni.showToast({
+      title: '缺少讲座ID，无法报名',
+      icon: 'none',
+    })
+    return
+  }
+
+  const confirmRes = await uni.showModal({
+    title: '确认报名',
+    content: '确认报名该讲座吗？',
+    confirmText: '确认报名',
+    cancelText: '再想想',
   })
+  if (!confirmRes.confirm) {
+    return
+  }
+
+  registerLoading.value = true
+  try {
+    await registerLecture({ lectureId })
+    uni.showToast({
+      title: '报名成功，请准时参加',
+      icon: 'success',
+    })
+    await fetchLectureDetailById(lectureId)
+  }
+  catch (err: any) {
+    const backendMsg = err?.data?.msg
+    uni.showToast({
+      title: backendMsg || '报名失败，请稍后重试',
+      icon: 'none',
+    })
+  }
+  finally {
+    registerLoading.value = false
+  }
 }
 </script>
 
@@ -223,6 +287,16 @@ function handleRegister() {
 
           <view class="mb-20rpx text-24rpx text-#6b7280">
             主讲人：{{ lecture.teacherName || lecture.teacherId || '--' }}
+          </view>
+
+          <view v-if="lectureTags.length" class="mb-20rpx flex flex-wrap gap-12rpx">
+            <text
+              v-for="tag in lectureTags"
+              :key="tag.id"
+              class="rounded-9999rpx bg-#ecfeff px-16rpx py-8rpx text-22rpx text-#0f766e"
+            >
+              #{{ tag.name }}
+            </text>
           </view>
 
           <view class="mb-20rpx rounded-16rpx bg-#f3f4f6 p-20rpx">
