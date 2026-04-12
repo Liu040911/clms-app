@@ -1,4 +1,4 @@
-FROM node:20-alpine as build-stage
+FROM node:20-alpine AS build-stage
 
 WORKDIR /app
 RUN corepack enable
@@ -10,13 +10,11 @@ RUN apk update && apk add --no-cache git
 RUN npm config set registry https://registry.npmmirror.com
 
 COPY .npmrc package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+# 容器构建不需要执行 husky/only-allow 等本地开发生命周期脚本
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 COPY . .
-
-# 默认构建 H5 生产包，可通过 BUILD_MODE=test 切换为测试环境包
-ARG BUILD_MODE=production
-RUN if [ "$BUILD_MODE" = "test" ]; then pnpm build:h5:test; else pnpm build:h5:prod; fi
+RUN pnpm build
 
 FROM nginx:stable-alpine as production-stage
 
