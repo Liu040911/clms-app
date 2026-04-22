@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { ITeacherLectureItem } from '@/api/types/lecture'
 import { computed, ref } from 'vue'
-import { deleteLectureById, getTeacherLectureList } from '@/api/lecture'
+import { deleteLectureById, getLectureCheckInQrCode, getTeacherLectureList } from '@/api/lecture'
 import { useUserStore } from '@/store/user'
 
 definePage({
@@ -20,6 +20,10 @@ const pageSize = 10
 const hasMore = ref(true)
 const loading = ref(false)
 const list = ref<ITeacherLectureItem[]>([])
+const qrVisible = ref(false)
+const qrCodeData = ref('')
+const qrExpireAt = ref('')
+const qrLoadingId = ref('')
 
 const statusMap: Record<string, { text: string, type: 'default' | 'warning' | 'success' | 'danger' }> = {
   draft: { text: '草稿', type: 'default' },
@@ -211,6 +215,36 @@ function handleDelete(item: ITeacherLectureItem) {
   })
 }
 
+async function handleGenerateCheckInQr(item: ITeacherLectureItem) {
+  if (!item.id || qrLoadingId.value) {
+    return
+  }
+
+  qrLoadingId.value = item.id
+  try {
+    const result = await getLectureCheckInQrCode(item.id)
+    if (!result?.qrCodeBase64) {
+      throw new Error('二维码数据为空')
+    }
+    qrCodeData.value = result.qrCodeBase64
+    qrExpireAt.value = result.expireAt || ''
+    qrVisible.value = true
+  }
+  catch (error: any) {
+    uni.showToast({
+      title: error?.data?.msg || '生成签到二维码失败，请稍后重试',
+      icon: 'none',
+    })
+  }
+  finally {
+    qrLoadingId.value = ''
+  }
+}
+
+function closeQrDialog() {
+  qrVisible.value = false
+}
+
 onShow(() => {
   void loadLectures(true)
 })
@@ -276,6 +310,9 @@ onReachBottom(() => {
         </view>
 
         <view class="card-actions">
+          <button class="action-btn action-info" :disabled="qrLoadingId === item.id" @click="handleGenerateCheckInQr(item)">
+            {{ qrLoadingId === item.id ? '生成中...' : '签到码' }}
+          </button>
           <button class="action-btn action-primary" @click="handleEdit(item)">
             编辑
           </button>
@@ -290,6 +327,17 @@ onReachBottom(() => {
 
       <view class="load-more">
         <text class="load-text">{{ loading ? '加载中...' : (hasMore ? '上拉加载更多' : '没有更多了') }}</text>
+      </view>
+    </view>
+
+    <view v-if="qrVisible" class="qr-mask" @click="closeQrDialog">
+      <view class="qr-dialog" @click.stop>
+        <text class="qr-title">讲座签到二维码</text>
+        <image class="qr-image" :src="qrCodeData" mode="aspectFit" />
+        <text class="qr-expire">过期时间：{{ formatTime(qrExpireAt) }}</text>
+        <button class="qr-close-btn" @click="closeQrDialog">
+          关闭
+        </button>
       </view>
     </view>
   </view>
@@ -429,6 +477,11 @@ onReachBottom(() => {
   background: #ecfeff;
 }
 
+.action-info {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
 .action-danger {
   color: #b91c1c;
   background: #fee2e2;
@@ -455,5 +508,59 @@ onReachBottom(() => {
 .load-text {
   color: #9ca3af;
   font-size: 12px;
+}
+
+.qr-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(17, 24, 39, 0.48);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 999;
+}
+
+.qr-dialog {
+  width: 100%;
+  max-width: 320px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.qr-title {
+  color: #111827;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.qr-image {
+  width: 220px;
+  height: 220px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.qr-expire {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.qr-close-btn {
+  height: 32px;
+  line-height: 32px;
+  border-radius: 16px;
+  background: #e5e7eb;
+  color: #374151;
+  font-size: 13px;
+  padding: 0 16px;
 }
 </style>
