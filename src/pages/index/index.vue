@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { HotLectureListItem, LectureTagListItem } from '@/api/types/lecture'
-import { getLectureTagList, getRecentHotLectureList } from '@/api/lecture'
+import { checkInLectureByQrCode, getLectureTagList, getRecentHotLectureList } from '@/api/lecture'
 import { usePageScrollableHeight } from '@/hooks/usePageScrollableHeight'
 
 defineOptions({
@@ -112,6 +112,69 @@ function handleSearch() {
   uni.showToast({ title: '搜索功能开发中', icon: 'none' })
 }
 
+function extractQrToken(scanText?: string) {
+  if (!scanText) {
+    return ''
+  }
+
+  const trimmed = scanText.trim()
+  if (!trimmed) {
+    return ''
+  }
+
+  try {
+    if (/^https?:\/\//i.test(trimmed)) {
+      const url = new URL(trimmed)
+      return url.searchParams.get('qrToken') || url.searchParams.get('token') || ''
+    }
+  }
+  catch {
+    // 非 URL 内容按纯 token 处理。
+  }
+
+  return trimmed
+}
+
+async function handleScanLectureCheckIn() {
+  try {
+    const scanResult = await new Promise<UniApp.ScanCodeSuccessRes>((resolve, reject) => {
+      uni.scanCode({
+        onlyFromCamera: false,
+        scanType: ['qrCode'],
+        success: resolve,
+        fail: reject,
+      })
+    })
+
+    const qrToken = extractQrToken(scanResult.result)
+    if (!qrToken) {
+      uni.showToast({
+        title: '未识别到有效签到码',
+        icon: 'none',
+      })
+      return
+    }
+
+    await checkInLectureByQrCode(qrToken)
+    uni.showToast({
+      title: '签到成功',
+      icon: 'success',
+    })
+  }
+  catch (error: any) {
+    const errMsg = error?.msg || error?.errMsg || ''
+    // 用户主动取消扫码时不打扰。
+    if (typeof errMsg === 'string' && errMsg.toLowerCase().includes('cancel')) {
+      return
+    }
+
+    uni.showToast({
+      title: error?.msg || '签到失败，请稍后重试',
+      icon: 'none',
+    })
+  }
+}
+
 function handleCategoryClick(name: string) {
   uni.showToast({ title: `${name}开发中`, icon: 'none' })
 }
@@ -201,6 +264,9 @@ function handleRecommendClick(id: string) {
     <scroll-view class="h-full" scroll-y>
       <view class="bg-linear-to-br from-blue-500 to-purple-600 px-24rpx pb-24rpx" :style="{ paddingTop: headerPaddingTop }">
         <view class="flex items-center" :style="{ marginTop: searchTopOffset }">
+          <view class="scan-icon-trigger" :style="{ height: searchBarHeight, width: searchBarHeight }" @tap="handleScanLectureCheckIn">
+            <image class="scan-icon-image" src="/static/icons/scan-code.svg" mode="aspectFit" />
+          </view>
           <view
             class="flex flex-1 items-center rounded-9999rpx bg-white/90 px-24rpx"
             :style="{ marginRight: searchRightOffset, height: searchBarHeight }"
@@ -339,5 +405,19 @@ function handleRecommendClick(id: string) {
   text-align: center;
   font-size: 20rpx;
   line-height: 1.2;
+}
+
+.scan-icon-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12rpx;
+  border-radius: 9999rpx;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.scan-icon-image {
+  width: 34rpx;
+  height: 34rpx;
 }
 </style>

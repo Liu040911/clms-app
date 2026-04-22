@@ -4,6 +4,7 @@ import type {
   IClassroomItem,
   ICreateLectureApplyReq,
   ILectureInfo,
+  ILectureCheckInQrCodeInfo,
   IUserLectureAppointmentItem,
   IUserLectureAppointmentQuery,
   ILectureRegistrationInfo,
@@ -208,6 +209,26 @@ export function getTeacherLectureList(query: ITeacherLectureListQuery) {
  */
 export function deleteLectureById(lectureId: string) {
   return http.post<void>(`${BASE_URL}/lecture/delete`, {}, { lectureId })
+}
+
+/**
+ * 教师端获取讲座签到二维码
+ */
+export function getLectureCheckInQrCode(lectureId: string) {
+  return http.get<ILectureCheckInQrCodeInfo>(`${BASE_URL}/lecture/check-in/qrcode`, { lectureId }, undefined, {
+    hideErrorToast: true,
+    rejectOnBusinessError: true,
+  })
+}
+
+/**
+ * 用户扫码讲座签到
+ */
+export function checkInLectureByQrCode(qrToken: string) {
+  return http.post<ILectureRegistrationInfo>(`${BASE_URL}/user/registration/check-in/scan`, {}, { qrToken }, undefined, {
+    hideErrorToast: true,
+    rejectOnBusinessError: true,
+  })
 }
 
 export interface IHotLectureListQuery {

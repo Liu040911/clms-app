@@ -139,6 +139,13 @@ export interface ILectureRegistrationInfo {
   updateTime?: string
 }
 
+export interface ILectureCheckInQrCodeInfo {
+  lectureId: string
+  qrCodeBase64: string
+  ttlSeconds: number
+  expireAt: string
+}
+
 export interface IUserLectureAppointmentQuery {
   status?: string
   page?: number
