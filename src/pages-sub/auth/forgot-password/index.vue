@@ -81,6 +81,13 @@ import { getEmailCode, getPhoneCode, resetPassword, verifyCode } from '@/api/aut
 import CommonInput from '@/components/CommonInput/index.vue'
 import GradientButton from '@/components/GradientButton/index.vue'
 
+definePage({
+  style: {
+    navigationBarTitleText: '忘记密码',
+    navigationStyle: 'custom',
+  },
+})
+
 interface ResetForm {
   credential: string
   code: string

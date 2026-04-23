@@ -94,6 +94,13 @@ import GradientButton from '@/components/GradientButton/index.vue'
 import { useTokenStore } from '@/store/token'
 import { useUserStore } from '@/store/user'
 
+definePage({
+  style: {
+    navigationBarTitleText: '注册',
+    navigationStyle: 'custom',
+  },
+})
+
 interface RegisterForm {
   nickname: string
   phone: string

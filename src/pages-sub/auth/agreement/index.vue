@@ -18,6 +18,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 
+definePage({
+  style: {
+    navigationBarTitleText: '协议详情',
+  },
+})
+
 const title = ref('')
 const updateTime = ref('2025-12-01')
 const content = ref('')
