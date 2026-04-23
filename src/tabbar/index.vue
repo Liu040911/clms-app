@@ -43,7 +43,10 @@ function handleClick(index: number) {
       title: '请先登录',
       icon: 'none',
     })
-    toLoginPage({ queryString: `?redirect=${encodeURIComponent(myPagePath)}` })
+    toLoginPage({
+      mode: 'reLaunch',
+      queryString: `?redirect=${encodeURIComponent(myPagePath)}`,
+    })
     return
   }
 
