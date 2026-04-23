@@ -108,6 +108,13 @@ import CommonInput from '@/components/CommonInput/index.vue'
 import GradientButton from '@/components/GradientButton/index.vue'
 import { useTokenStore } from '@/store/token'
 
+definePage({
+  style: {
+    navigationBarTitleText: '登录',
+    navigationStyle: 'custom',
+  },
+})
+
 const tokenStore = useTokenStore()
 
 // 登录方式

@@ -33,7 +33,6 @@ export default defineManifestConfig({
   'h5': {
     router: {
       base: VITE_APP_PUBLIC_BASE,
-      mode: (VITE_APP_ROUTER_MODE || 'history') as 'hash' | 'history',
     },
   },
   /* 5+App特有相关 */
