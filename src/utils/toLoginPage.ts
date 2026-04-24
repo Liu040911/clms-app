@@ -4,7 +4,6 @@ import { debounce } from '@/utils/debounce'
 interface ToLoginPageOptions {
   /**
    * 跳转模式, uni.navigateTo | uni.reLaunch
-  * @default 'reLaunch'
    */
   mode?: 'navigateTo' | 'reLaunch'
   /**
@@ -17,6 +16,69 @@ interface ToLoginPageOptions {
 // 登录页路径
 const LOGIN_PAGE = '/pages-sub/auth/login/index'
 
+function normalizeQueryString(queryString?: string) {
+  if (!queryString) {
+    return ''
+  }
+  return queryString.startsWith('?') ? queryString : `?${queryString}`
+}
+
+function h5HardRedirect(url: string) {
+  // #ifdef H5
+  const mode = import.meta.env.VITE_APP_ROUTER_MODE === 'hash' ? 'hash' : 'history'
+  const base = (import.meta.env.VITE_APP_PUBLIC_BASE || '/').replace(/\/$/, '')
+  const origin = window.location.origin
+  const target = mode === 'hash'
+    ? `${origin}${base || ''}/#${url}`
+    : `${origin}${url}`
+  window.location.replace(target)
+  // #endif
+}
+
+function safeUniNavigate(url: string, mode: 'navigateTo' | 'reLaunch') {
+  try {
+    if (mode === 'navigateTo') {
+      uni.navigateTo({
+        url,
+        fail() {
+          uni.redirectTo({
+            url,
+            fail() {
+              uni.reLaunch({
+                url,
+                fail() {
+                  h5HardRedirect(url)
+                },
+              })
+            },
+          })
+        },
+      })
+      return
+    }
+
+    uni.reLaunch({
+      url,
+      fail() {
+        uni.redirectTo({
+          url,
+          fail() {
+            uni.navigateTo({
+              url,
+              fail() {
+                h5HardRedirect(url)
+              },
+            })
+          },
+        })
+      },
+    })
+  }
+  catch {
+    h5HardRedirect(url)
+  }
+}
+
 /**
  * 跳转到登录页, 带防抖处理
  *
@@ -25,7 +87,7 @@ const LOGIN_PAGE = '/pages-sub/auth/login/index'
 export const toLoginPage = debounce((options: ToLoginPageOptions = {}) => {
   const { mode = 'reLaunch', queryString = '' } = options
 
-  const url = `${LOGIN_PAGE}${queryString}`
+  const url = `${LOGIN_PAGE}${normalizeQueryString(queryString)}`
 
   // 获取当前页面路径
   const currentPage = getLastPage()
@@ -35,15 +97,5 @@ export const toLoginPage = debounce((options: ToLoginPageOptions = {}) => {
     return
   }
 
-  if (mode === 'navigateTo') {
-    uni.navigateTo({
-      url,
-      fail() {
-        uni.reLaunch({ url })
-      },
-    })
-  }
-  else {
-    uni.reLaunch({ url })
-  }
+  safeUniNavigate(url, mode)
 }, 500)
