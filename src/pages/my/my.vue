@@ -4,7 +4,6 @@ import { usePageScrollableHeight } from '@/hooks/usePageScrollableHeight'
 import { http } from '@/http/http'
 import { useAppStatus } from '@/store/app'
 import { useUserStore } from '@/store/user'
-import { toLoginPage } from '@/utils/toLoginPage'
 
 interface IMySubPageItem {
   title: string
@@ -291,7 +290,9 @@ onShow(() => {
   updatePageScrollableHeight()
   // 标题已由页面配置处理，不需要再手动设置
   if (!useUserStore().userInfo || useUserStore().userInfo.id === '') {
-    toLoginPage({ mode: 'reLaunch' })
+    uni.navigateTo({
+      url: '/pages-sub/auth/login/index',
+    })
   }
   else {
     if (!subPages.value) {
