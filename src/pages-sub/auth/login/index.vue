@@ -137,7 +137,7 @@ const codeSending = ref(false)
 const codeCountdown = ref(0)
 const redirectPath = ref('/pages/index/index')
 
-const TAB_PAGE_PATHS = new Set(['/pages/index/index', '/pages/my/my'])
+const TAB_PAGE_PATHS = new Set(['/pages/index/index', '/pages/my/index'])
 
 function getSafeRedirectPath(rawRedirect?: string) {
   if (!rawRedirect) {
