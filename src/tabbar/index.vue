@@ -2,7 +2,6 @@
 // i-carbon-code
 import type { CustomTabBarItem } from './types'
 import { useTokenStore } from '@/store/token'
-import { toLoginPage } from '@/utils/toLoginPage'
 import { customTabbarEnable, needHideNativeTabbar, tabbarCacheEnable } from './config'
 import { tabbarList, tabbarStore } from './store'
 
@@ -33,22 +32,22 @@ function handleClick(index: number) {
     return
   }
   const url = tabbarList[index].pagePath
-  const normalizedUrl = url.startsWith('/') ? url : `/${url}`
-  const tokenStore = useTokenStore()
-  const myPagePath = '/pages/my/my'
+  // const normalizedUrl = url.startsWith('/') ? url : `/${url}`
+  // const tokenStore = useTokenStore()
+  // const myPagePath = '/pages/my/my'
 
-  // 点击“我的”时，未登录则先引导去登录页
-  if (normalizedUrl === myPagePath && !tokenStore.hasLogin) {
-    uni.showToast({
-      title: '请先登录',
-      icon: 'none',
-    })
-    toLoginPage({
-      mode: 'reLaunch',
-      queryString: `?redirect=${encodeURIComponent(myPagePath)}`,
-    })
-    return
-  }
+  // // 点击“我的”时，未登录则先引导去登录页
+  // if (normalizedUrl === myPagePath && !tokenStore.hasLogin) {
+  //   uni.showToast({
+  //     title: '请先登录',
+  //     icon: 'none',
+  //   })
+  //   toLoginPage({
+  //     mode: 'reLaunch',
+  //     queryString: `?redirect=${encodeURIComponent(myPagePath)}`,
+  //   })
+  //   return
+  // }
 
   tabbarStore.setCurIdx(index)
   if (tabbarCacheEnable) {
