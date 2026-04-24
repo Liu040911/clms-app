@@ -162,12 +162,18 @@ function getSafeRedirectPath(rawRedirect?: string) {
 function navigateAfterLogin() {
   const targetPath = getSafeRedirectPath(redirectPath.value)
 
+  // #ifdef H5
+  uni.reLaunch({ url: targetPath })
+  // #endif
+
+  // #ifndef H5
   if (TAB_PAGE_PATHS.has(targetPath)) {
     uni.switchTab({ url: targetPath })
-    return
   }
-
-  uni.redirectTo({ url: targetPath })
+  else {
+    uni.reLaunch({ url: targetPath })
+  }
+  // #endif
 }
 
 onLoad((options) => {
