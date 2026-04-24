@@ -125,7 +125,7 @@
   "h5": {
     "router": {
       "base": "/",
-      "mode": "hash"
+      "mode": "history"
     }
   }
 }
