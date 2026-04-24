@@ -288,7 +288,6 @@ function getIconClass(icon?: string) {
 }
 
 onShow(() => {
-  updatePageScrollableHeight()
   // 标题已由页面配置处理，不需要再手动设置
   if (!useUserStore().userInfo || useUserStore().userInfo.id === '') {
     toLoginPage()
