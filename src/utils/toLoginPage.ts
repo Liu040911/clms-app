@@ -25,12 +25,9 @@ function normalizeQueryString(queryString?: string) {
 
 function h5HardRedirect(url: string) {
   // #ifdef H5
-  const mode = import.meta.env.VITE_APP_ROUTER_MODE === 'hash' ? 'hash' : 'history'
   const base = (import.meta.env.VITE_APP_PUBLIC_BASE || '/').replace(/\/$/, '')
   const origin = window.location.origin
-  const target = mode === 'hash'
-    ? `${origin}${base || ''}/#${url}`
-    : `${origin}${url}`
+  const target = `${origin}${base}${url}`
   window.location.replace(target)
   // #endif
 }
