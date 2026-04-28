@@ -2,6 +2,7 @@
 // i-carbon-code
 import type { CustomTabBarItem } from './types'
 import { useTokenStore } from '@/store/token'
+import { toLoginPage } from '@/utils/toLoginPage'
 import { customTabbarEnable, needHideNativeTabbar, tabbarCacheEnable } from './config'
 import { tabbarList, tabbarStore } from './store'
 
@@ -23,35 +24,41 @@ function handleClickBulge() {
 }
 
 function handleClick(index: number) {
-  // 点击原来的不做操作
-  if (index === tabbarStore.curIdx) {
-    return
+  const url = `/${tabbarList[index].pagePath}`
+  const MY_PAGE = '/pages/my/index'
+
+  // 点击"我的"时，未登录则先引导去登录页（需在 early return 之前检查）
+  if (url === MY_PAGE) {
+    const tokenStore = useTokenStore()
+    if (!tokenStore.hasLogin) {
+      toLoginPage({
+        mode: 'reLaunch',
+        queryString: `?redirect=${encodeURIComponent(MY_PAGE)}`,
+      })
+      return
+    }
   }
+
   if (tabbarList[index].isBulge) {
     handleClickBulge()
     return
   }
-  const url = tabbarList[index].pagePath
-  // const normalizedUrl = url.startsWith('/') ? url : `/${url}`
-  // const tokenStore = useTokenStore()
-  // const myPagePath = '/pages/my/my'
 
-  // // 点击“我的”时，未登录则先引导去登录页
-  // if (normalizedUrl === myPagePath && !tokenStore.hasLogin) {
-  //   uni.showToast({
-  //     title: '请先登录',
-  //     icon: 'none',
-  //   })
-  //   toLoginPage({
-  //     mode: 'reLaunch',
-  //     queryString: `?redirect=${encodeURIComponent(myPagePath)}`,
-  //   })
-  //   return
-  // }
+  // 点击原来的不做操作
+  if (index === tabbarStore.curIdx) {
+    return
+  }
 
   tabbarStore.setCurIdx(index)
   if (tabbarCacheEnable) {
-    uni.switchTab({ url })
+    uni.switchTab({
+      url,
+      fail(err) {
+        // H5 环境下 switchTab 可能因自定义 tabbar 兼容性问题失败，降级为 reLaunch
+        console.warn('switchTab 失败，降级为 reLaunch:', err)
+        uni.reLaunch({ url })
+      },
+    })
   }
   else {
     uni.navigateTo({ url })
