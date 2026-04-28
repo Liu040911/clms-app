@@ -163,7 +163,7 @@ function navigateAfterLogin() {
   const targetPath = getSafeRedirectPath(redirectPath.value)
 
   // #ifdef H5
-  uni.reLaunch({ url: targetPath })
+  window.location.hash = targetPath
   // #endif
 
   // #ifndef H5

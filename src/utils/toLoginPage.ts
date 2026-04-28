@@ -41,6 +41,12 @@ export const toLoginPage = debounce((options: ToLoginPageOptions = {}) => {
     uni.navigateTo({ url })
   }
   else {
+    // #ifdef H5
+    // H5 环境下 uni.reLaunch 可能因路由器未就绪而报错，改用 location.hash 直接导航
+    window.location.hash = url
+    // #endif
+    // #ifndef H5
     uni.reLaunch({ url })
+    // #endif
   }
 }, 500)
