@@ -27,12 +27,14 @@ export const toLoginPage = debounce((options: ToLoginPageOptions = {}) => {
 
   const url = `${LOGIN_PAGE}${queryString}`
 
-  // 获取当前页面路径
+  // 获取当前页面路径（防御性处理）
   const currentPage = getLastPage()
-  const currentPath = `/${currentPage.route}`
-  // 如果已经在登录页，则不跳转
-  if (currentPath === LOGIN_PAGE) {
-    return
+  if (currentPage) {
+    const currentPath = currentPage.route.startsWith('/') ? currentPage.route : `/${currentPage.route}`
+    // 如果已经在登录页，则不跳转
+    if (currentPath === LOGIN_PAGE) {
+      return
+    }
   }
 
   if (mode === 'navigateTo') {

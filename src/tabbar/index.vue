@@ -24,7 +24,8 @@ function handleClickBulge() {
 }
 
 function handleClick(index: number) {
-  const url = `/${tabbarList[index].pagePath}`
+  const rawPath = tabbarList[index].pagePath
+  const url = rawPath.startsWith('/') ? rawPath : `/${rawPath}`
   const MY_PAGE = '/pages/my/index'
 
   // 点击"我的"时，未登录则先引导去登录页（需在 early return 之前检查）
