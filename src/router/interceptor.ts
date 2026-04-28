@@ -17,6 +17,11 @@ export const navigateToInterceptor = {
     }
     let { path, query: _query } = parseUrlToObj(url)
 
+    // 标准化路径：确保以 '/' 开头，兼容 switchTab 等不带前导 '/' 的页面路径
+    if (!path.startsWith('/')) {
+      path = '/' + path
+    }
+
     FG_LOG_ENABLE && console.log('\n\n路由拦截器:-------------------------------------')
     FG_LOG_ENABLE && console.log('路由拦截器 1: url->', url, ', query ->', query)
     const myQuery = { ..._query, ...query }
