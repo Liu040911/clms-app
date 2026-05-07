@@ -290,8 +290,8 @@ onShow(() => {
   updatePageScrollableHeight()
   // 标题已由页面配置处理，不需要再手动设置
   if (!useUserStore().userInfo || useUserStore().userInfo.id === '') {
-    uni.navigateTo({
-      url: '/pages-sub/auth/login/index',
+    uni.redirectTo({
+      url: `/pages-sub/auth/login/index?redirect=${encodeURIComponent('/pages/my/my')}`,
     })
   }
   else {

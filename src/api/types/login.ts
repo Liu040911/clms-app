@@ -70,21 +70,21 @@ export interface IUploadSuccessInfo {
   fileSize: number
 }
 /**
- * 更新用户信息
+ * 更新用户信息（昵称、性别）
  */
 export interface IUpdateInfo {
-  id: number
-  name: string
-  sex: string
+  nickname?: string
+  gender?: string
 }
+
 /**
- * 更新用户信息
+ * 更新手机号或邮箱（需验证码）
  */
-export interface IUpdatePassword {
-  id: number
-  oldPassword: string
-  newPassword: string
-  confirmPassword: string
+export interface IUpdateCredential {
+  type: 'phone' | 'email'
+  value: string
+  code: string
+  stepToken: string
 }
 
 /**

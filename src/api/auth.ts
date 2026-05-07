@@ -1,4 +1,4 @@
-import type { IAuthLoginRes, ICaptcha, IDoubleTokenRes, IUpdateInfo, IUpdatePassword, IUserInfoRes } from './types/login'
+import type { IAuthLoginRes, ICaptcha, IDoubleTokenRes, IUpdateCredential, IUpdateInfo, IUserInfoRes } from './types/login'
 import { BASE_URL } from '@/api/types'
 import { http } from '@/http/http'
 /**
@@ -110,10 +110,10 @@ export function updateInfo(data: IUpdateInfo) {
 }
 
 /**
- * 修改用户密码
+ * 更新手机号或邮箱（需验证码）
  */
-export function updateUserPassword(data: IUpdatePassword) {
-  return http.post(`${BASE_URL}/user/updatePassword`, data)
+export function updateCredential(data: IUpdateCredential) {
+  return http.post<void>(`${BASE_URL}/user/updateCredential`, data)
 }
 
 /**
