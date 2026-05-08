@@ -14,24 +14,15 @@ const safeAreaInsets = systemInfo.safeAreaInsets || { top: 0, right: 0, bottom: 
 const logoutPending = ref(false)
 
 function handleToMyInfo() {
-  uni.showToast({
-    title: '功能暂未开放',
-    icon: 'none',
-  })
+  uni.navigateTo({ url: '/pages-sub/my/account/my-info/index' })
 }
 
 function handleToUpdateEmailPhone() {
-  uni.showToast({
-    title: '功能暂未开放',
-    icon: 'none',
-  })
+  uni.navigateTo({ url: '/pages-sub/my/account/update-credential/index' })
 }
 
 function handleResetPassword() {
-  uni.showToast({
-    title: '功能暂未开放',
-    icon: 'none',
-  })
+  uni.navigateTo({ url: '/pages-sub/my/account/reset-password/index' })
 }
 
 function handleToSwitchAccount() {
