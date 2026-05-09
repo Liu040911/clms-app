@@ -42,7 +42,10 @@ const lectureTags = computed(() => {
 const statusTextMap: Record<string, string> = {
   draft: '草稿',
   pending: '待审核',
+  reject: '已驳回',
   published: '已发布',
+  registering: '报名中',
+  ongoing: '进行中',
   finished: '已结束',
   cancelled: '已取消',
 }
@@ -59,8 +62,14 @@ const registerButtonText = computed(() => {
   if (currentStatus.value === 'pending') {
     return '待审核'
   }
+  if (currentStatus.value === 'reject') {
+    return '已驳回'
+  }
   if (currentStatus.value === 'cancelled') {
     return '已取消'
+  }
+  if (currentStatus.value === 'ongoing') {
+    return '进行中'
   }
   if (currentStatus.value === 'finished') {
     return '已结束'
@@ -71,11 +80,15 @@ const registerButtonText = computed(() => {
   return '立即报名'
 })
 
+const canRegister = computed(() => {
+  return currentStatus.value === 'published' || currentStatus.value === 'registering'
+})
+
 const registerDisabled = computed(() => {
   if (registerLoading.value || detailLoading.value) {
     return true
   }
-  if (currentStatus.value !== 'published') {
+  if (!canRegister.value) {
     return true
   }
   return remainingSeats.value <= 0
@@ -180,7 +193,7 @@ async function handleRegister() {
     return
   }
 
-  if (currentStatus.value !== 'published') {
+  if (!canRegister.value) {
     uni.showToast({
       title: `当前状态：${registerButtonText.value}`,
       icon: 'none',

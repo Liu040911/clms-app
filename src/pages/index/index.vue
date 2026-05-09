@@ -16,6 +16,10 @@ definePage({
   },
 })
 
+function handleAiAssistant() {
+  uni.navigateTo({ url: '/pages-sub/chat/index' })
+}
+
 const iconKeyMap: Record<string, string> = {
   'teacher-talk': '🎤',
   'academic-salon': '💡',
@@ -384,6 +388,19 @@ function handleRecommendClick(id: string) {
         </view>
       </view>
     </scroll-view>
+  </view>
+  <view
+    class="fixed z-100 flex items-center justify-center rounded-9999rpx shadow-lg active:opacity-80"
+    :style="{
+      bottom: '180rpx',
+      right: '52rpx',
+      width: '100rpx',
+      height: '100rpx',
+      background: 'linear-gradient(135deg, #60a5fa, #7c3aed)',
+    }"
+    @tap="handleAiAssistant"
+  >
+    <view class="i-carbon-chat-bot text-40rpx text-white" />
   </view>
 </template>
 

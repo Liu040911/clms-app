@@ -344,7 +344,7 @@ function uploadPosterByFilePath(filePath: string, token: string, key: string): P
             const uploadData = typeof uploadRes.data === 'string'
               ? JSON.parse(uploadRes.data || '{}')
               : (uploadRes.data as Record<string, any>)
-            resolve(`http://td4d4v1ov.hn-bkt.clouddn.com/${uploadData?.key || key}`)
+            resolve(`http://file.liuservice.online/${uploadData?.key || key}`)
             return
           }
           tryUpload()
