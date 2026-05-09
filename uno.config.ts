@@ -84,6 +84,11 @@ export default defineConfig({
     'i-quill:warning-alt',
     'i-quill:add',
     'i-quill:mail-list',
+    'i-carbon-chat-bot',
+    'i-carbon-send',
+    'i-carbon-chevron-right',
+    'i-carbon-arrow-left',
+    'i-carbon-chat',
   ],
   rules: [
     [
