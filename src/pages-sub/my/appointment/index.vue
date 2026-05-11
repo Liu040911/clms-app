@@ -40,6 +40,9 @@ const lectureStatusMap: Record<string, string> = {
   draft: '草稿',
   pending: '待审核',
   published: '已发布',
+  registering: '报名中',
+  ready: '待开始',
+  ongoing: '进行中',
   finished: '已结束',
   cancelled: '已取消',
   deleted: '已删除',
@@ -128,7 +131,8 @@ function canCancel(item: IUserLectureAppointmentItem) {
 }
 
 function canReRegister(item: IUserLectureAppointmentItem) {
-  return item.registrationStatus === 'cancelled' && item.lectureStatus === 'published'
+  return item.registrationStatus === 'cancelled'
+    && (item.lectureStatus === 'published' || item.lectureStatus === 'registering')
 }
 
 async function loadAppointments(reset = false) {

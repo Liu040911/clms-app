@@ -45,6 +45,7 @@ const statusTextMap: Record<string, string> = {
   reject: '已驳回',
   published: '已发布',
   registering: '报名中',
+  ready: '待开始',
   ongoing: '进行中',
   finished: '已结束',
   cancelled: '已取消',
@@ -68,6 +69,12 @@ const registerButtonText = computed(() => {
   if (currentStatus.value === 'cancelled') {
     return '已取消'
   }
+  if (currentStatus.value === 'published') {
+    return '未到报名时间'
+  }
+  if (currentStatus.value === 'ready') {
+    return '待开始'
+  }
   if (currentStatus.value === 'ongoing') {
     return '进行中'
   }
@@ -81,7 +88,7 @@ const registerButtonText = computed(() => {
 })
 
 const canRegister = computed(() => {
-  return currentStatus.value === 'published' || currentStatus.value === 'registering'
+  return currentStatus.value === 'registering'
 })
 
 const registerDisabled = computed(() => {
