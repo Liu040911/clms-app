@@ -31,6 +31,7 @@ const statusMap: Record<string, { text: string, type: 'default' | 'warning' | 's
   reject: { text: '已驳回', type: 'danger' },
   published: { text: '已发布', type: 'success' },
   registering: { text: '报名中', type: 'success' },
+  ready: { text: '待开始', type: 'warning' },
   ongoing: { text: '进行中', type: 'warning' },
   finished: { text: '已结束', type: 'default' },
   cancelled: { text: '已取消', type: 'danger' },
